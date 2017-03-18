@@ -1,3 +1,5 @@
+//vlc -I http --http-password vlcremote
+
 /**
  *  Copyright 2015 SmartThings
  *
@@ -94,6 +96,9 @@ def mainPage() {
 		}
 		section {
 			input "sonos", "capability.musicPlayer", title: "On this Speaker player", required: true
+		}
+		section("Control these bulbs...") {
+			input "hues", "capability.colorControl", title: "Which Hue Bulbs?", required:true, multiple:true
 		}
 		section("More options", hideable: true, hidden: true) {
 			input "resumePlaying", "bool", title: "Resume currently playing music after notification", required: false, defaultValue: true
@@ -278,27 +283,44 @@ private takeAction(evt) {
 	log.trace "takeAction()"
 	if (actionType=="Wrestling") {
 		def themes = [
-		  ['Undertaker', "25", "WWE/The_Undertaker_-_Ministry_Theme_(Dame_Grease).mp3"],
-		  ['Razor', "25", "WWE/Razor_Ramon_-_The_Bad_Guy.mp3"],
-		  ['Hogan', "25", "WWE/Hulk_Hogan_-_Real_American_(Rick_Derringer).mp3"],
-		  ['Los_Boriquas', "25", "WWE/Los_Boriquas_-_Los_Boricuas.mp3"],
-		  ['Eddie_Guerrero', "25", "WCW/Eddie_Guerrero_-_la_Raza.mp3"],
-		  ['Shawn_Michaels', "25", "WWE/Shawn_Michaels_-_Sexy_Boy_(Jimmy_Hart_and_Shawn_Michaels).mp3"],
-		  ['Big_Bossman', "25", "WWE/Big_Bossman_-_Hard_Time.mp3"],
-		  ['Bret_Hart', "25", "WWE/Bret_The_Hitman_Hart_-_Hitman.mp3"],
-		  ['Chris_Jericho', "25", "WWE/Chris_Jericho_-_Break_the_Walls_Down_(Jim_Johnston).mp3"],
-		  ['Hardys', "25", "WWE/Hardy_Boyz_-_2Xtreme_(Zach_Tempest).mp3"],
-		  ['nWo', "25", "WCW/NWO_-_Rockhouse_(Original_Theme).mp3"],
-		  ['','211.26','WCW/Alex_Wright_-_Heartbeat_Away.mp3'],
-['','125.502','WCW/Booker_T_and_Harlem_Heat_-_Harlem_Rumble.mp3'],
-['','74.117','WCW/Buff_Bagwell_-_Buff_Daddy.mp3'],
-
+		  ['Undertaker', 25, "WWE/The_Undertaker_-_Ministry_Theme_(Dame_Grease).mp3", [80, 100]],
+		  ['Razor', 25, "WWE/Razor_Ramon_-_The_Bad_Guy.mp3", [10,90]],
+		  ['Hogan', 25, "WWE/Hulk_Hogan_-_Real_American_(Rick_Derringer).mp3", [2, 100]],
+		  ['Los_Boriquas', 25, "WWE/Los_Boriquas_-_Los_Boricuas.mp3"],
+		  ['Eddie_Guerrero', "105", "WCW/Eddie_Guerrero_-_la_Raza.mp3"],
+		  ['Shawn_Michaels', 25, "WWE/Shawn_Michaels_-_Sexy_Boy_(Jimmy_Hart_and_Shawn_Michaels).mp3", [2, 100]],
+		  ['Big_Bossman', 25, "WWE/Big_Bossman_-_Hard_Time.mp3", [70, 93]],
+		  ['Bret_Hart', 25, "WWE/Bret_The_Hitman_Hart_-_Hitman.mp3", [91, 100]],
+		  ['Chris_Jericho', 25, "WWE/Chris_Jericho_-_Break_the_Walls_Down_(Jim_Johnston).mp3"],
+		  ['Hardys', 25, "WWE/Hardy_Boyz_-_2Xtreme_(Zach_Tempest).mp3"],
+		  ['nWo', 25, "WCW/NWO_-_Rockhouse_(Original_Theme).mp3", [70, 93]],
+['Alex',211,'WCW/Alex_Wright_-_Heartbeat_Away.mp3'],
+['Harlem',126,'WCW/Booker_T_and_Harlem_Heat_-_Harlem_Rumble.mp3'],
+['Buff',74,'WCW/Buff_Bagwell_-_Buff_Daddy.mp3'],
+['Catus',257,'WCW/Cactus_Jack_-_Mr._Bang_Bang.mp3'],
+['Dean',155,'WCW/Dean_Malenko_-_The_Iceman.mp3'],
+['DDP',103,'WCW/Diamond_Dallas_Page_-_Self_High-Five.MP3'],
+['Disco',144,'WCW/Disco_Inferno_-_Disco_Fever.mp3'],
+['Eddie',105,'WCW/Eddie_Guerrero_-_la_Raza.mp3'],
+['Pillman',140,'WCW/Flyin%27_Brian_Pillman_-_Rocket_%28Def_Leppard%29.mp3'],
+['Goldberg',73,'WCW/Goldberg_-_Invasion.mp3'],
 		]
 		def index = new Random().nextInt(themes.size())
 		log.trace "${index} index chosen"
 		log.trace "Chose ${themes[index][0]}, playing ${themes[index][2]} for ${themes[index][1]} seconds"
 		state.sound = [uri: "file:///home/pi/Music/Wrestling/" + themes[index][2], duration: themes[index][1]]
 		sonos.playTrackAndRestore(state.sound.uri, state.sound.duration, volume)
+		
+		hues*.stopLoop()
+		if (themes[index][3]) {
+			def newValue = [hue: themes[index][3][0], saturation: themes[index][3][1], level: 100]
+			hues*.setColor(newValue)
+			
+		} else {
+			hues*.startLoop([direction: "Up", time: 3])
+			//runIn(10, stopLoops, [overwrite: true])
+		}
+		runIn(themes[index][1], stopLoops, [overwrite: true])
 	}
 	else if (song) {
 		sonos.playSoundAndTrack(state.sound.uri, state.sound.duration, state.selectedSong, volume)
@@ -314,6 +336,11 @@ private takeAction(evt) {
 		state[frequencyKey(evt)] = now()
 	}
 	log.trace "Exiting takeAction()"
+}
+
+def stopLoops() {
+    hues[0].off()
+	hues[1].stopLoop()
 }
 
 private frequencyKey(evt) {
