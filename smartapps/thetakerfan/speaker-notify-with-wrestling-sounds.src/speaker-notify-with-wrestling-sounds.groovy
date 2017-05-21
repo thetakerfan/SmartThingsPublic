@@ -187,6 +187,10 @@ private takeAction(evt) {
 			
 		//hues*.stopLoop()
 		log.trace "Lights ${theme[3]?.size()} - ${theme[3]}"
+		if (theme[3]?.size() > 0) {
+			rotateLights(theme[3], theme[1])
+			return
+		}
 		switch (theme[3]?.size()) {
 			case 3://Single color (one array with 3 parameters)
 				//hues*.setColor([hue: theme[3].hue, saturation: theme[3].saturation, level: theme[3].level])
@@ -212,6 +216,37 @@ private takeAction(evt) {
 	log.trace "Exiting takeAction()"
 }
 
+def rotateLights(colors, duration) {
+	def bulbs = hues.size()
+	def num_colors = colors.size()
+	def delay = 3
+	def bulb = 0
+	for (bulb = 0; bulb < bulbs; bulb++) {
+		if (num_colors <= bulb) {
+			log.trace "Check: ${num_colors} ; ${bulb} ; ${colors}"
+			colors.putAt(bulb, colors[bulb-1].clone())
+			colors[bulb].level = colors[bulb].level / 2
+			num_colors++
+		}
+		log.trace "Done: ${num_colors} ; ${bulb} ; ${colors}"
+		hues[bulb].setColor(colors[bulb], 0)
+	}
+	log.trace "Colors ${colors}"
+	for (int i = 0; i < duration/delay; i = i + num_colors) {
+		for (int color = 0; color < num_colors; color++) {
+			log.trace "i = ${i}; color = ${color}; Delay: ${(i+color)*delay}; index: ${(i+color)%num_colors}"
+			runIn((i+color)*delay,   setLight, [overwrite: false, data: [tick:(i+color)*delay, color: colors[((i+color-1)%num_colors)], bulb: ((i-1)%bulbs)]])
+			runIn((i+color)*delay+1, setLight, [overwrite: false, data: [tick:(i+color)*delay, color: colors[(i+color)%num_colors], bulb: (i)%bulbs]])
+		}
+	}
+}
+def setLight(data) {
+	log.trace "Data: ${data}"
+	//log.trace "Hues: ${hues}"
+	hues[data.bulb].setColor(data.color)
+	
+}
+
 def swapLights(colors, duration) {
 	//log.trace "Colors ${colors} - ${duration}"
 	hues[0].setColor(colors[0])
@@ -226,8 +261,8 @@ def swapLights(colors, duration) {
 }
 def setLights(data) {
 	//log.trace "Data: ${data}"
-	hues[0].setColor(data.colors[(data.even==true) ? 1 : 0])
-	hues[1].setColor(data.colors[(data.even==true) ? 0 : 1])
+	hues[0].setColor(data.colors[(data.even==true) ? 1 : 0],1)
+	hues[1].setColor(data.colors[(data.even==true) ? 0 : 1],1)
 	
 }
 
@@ -285,19 +320,31 @@ private getDaysOk() {
 }
 //[hue: 70, saturation:93, level:100]],
 private get_theme() {
+		def colors = [
+			"purple" : [hue: 280/3.6, saturation:96, level:100],
+			"red" : [hue: 0, saturation:100, level:100],
+			"blue" : [hue: 250/3.6, saturation:100, level:100],
+			"green" : [hue: 100/3.6, saturation:100, level:100],
+			"yellow" : [hue: 50/3.6, saturation:100, level:100],
+			"black" : [hue: 99, saturation:0, level:1],
+			"white" : [hue: 40,  saturation:5, level:100],
+			"pink" : [hue: 320/3.6,  saturation:100, level:100]
+		]
 		def themes = [
-		  ['Undertaker', 25, "WWE/The_Undertaker_-_Ministry_Theme_(Dame_Grease).mp3", [hue: 80, saturation:96, level:100]],
-		  ['Razor', 118, "WWE/Razor_Ramon_-_The_Bad_Guy.mp3", [52,93, 63]],
-		  ['Hogan', 25, "WWE/Hulk_Hogan_-_Real_American_(Rick_Derringer).mp3", [[hue: 3, saturation:100, level:89], [hue: 50, saturation:100, level:100]]],
+		['Voltron', 53, "Lion_Voltron-_Closing_Sequence.mp3", [colors['red'], colors['blue'], colors['green'], colors['yellow'], colors['black']]],
+		  ['Figment', 119, "One_Little_Spark.mp3", [colors['purple']]],
+		  ['Undertaker', 25, "WWE/The_Undertaker_-_Ministry_Theme_(Dame_Grease).mp3", [colors['purple']]],
+		  ['Razor', 118, "WWE/Razor_Ramon_-_The_Bad_Guy.mp3", [colors['purple'], colors['yellow']]],
+		  ['Hogan', 25, "WWE/Hulk_Hogan_-_Real_American_(Rick_Derringer).mp3", [colors['red'], colors['yellow']]],
 		  ['Los_Boriquas', 25, "WWE/Los_Boriquas_-_Los_Boricuas.mp3"],
 		  ['Eddie_Guerrero', 105, "WCW/Eddie_Guerrero_-_la_Raza.mp3"],
-		  ['Shawn_Michaels', 25, "WWE/Shawn_Michaels_-_Sexy_Boy_(Jimmy_Hart_and_Shawn_Michaels).mp3", [[0, 100, 72], [40, 5, 100]]],
-		  ['Big_Bossman', 81, "WWE/Big_Bossman_-_Hard_Time.mp3", [hue: 70, saturation:93, level:100]],
-		  ['Bret_Hart', 25, "WWE/Bret_The_Hitman_Hart_-_Hitman.mp3", [91, 100, 100]],
+		  ['Shawn_Michaels', 25, "WWE/Shawn_Michaels_-_Sexy_Boy_(Jimmy_Hart_and_Shawn_Michaels).mp3", [colors['red'], colors['white'], colors['blue']]],
+		  ['Big_Bossman', 81, "WWE/Big_Bossman_-_Hard_Time.mp3", [colors['blue']]],
+		  ['Bret_Hart', 25, "WWE/Bret_The_Hitman_Hart_-_Hitman.mp3", [colors['pink']]],
 		  ['Chris_Jericho', 25, "WWE/Chris_Jericho_-_Break_the_Walls_Down_(Jim_Johnston).mp3"],
 		  ['Hardys', 25, "WWE/Hardy_Boyz_-_2Xtreme_(Zach_Tempest).mp3"],
-		  ['nWo', 25, "WCW/NWO_-_Rockhouse_(Original_Theme).mp3", [70, 93, 100]],
-		  ['Kurt',177,'WWE/Kurt_Angle_-_You_Suck.MP3', [[hue: 3, saturation:100, level:89], [hue: 61, saturation:100, level:100]]],
+		  ['nWo', 25, "WCW/NWO_-_Rockhouse_(Original_Theme).mp3", [[hue: 70,  saturation:93, level:100]]],
+		  ['Kurt',177,'WWE/Kurt_Angle_-_You_Suck.MP3', [colors['red'], colors['blue']]],
 ['Alex',211,'WCW/Alex_Wright_-_Heartbeat_Away.mp3'],
 ['Harlem',126,'WCW/Booker_T_and_Harlem_Heat_-_Harlem_Rumble.mp3'],
 ['Buff',74,'WCW/Buff_Bagwell_-_Buff_Daddy.mp3'],
@@ -403,6 +450,7 @@ private get_theme() {
 
 		]
 		def index = new Random().nextInt(themes.size())
+		//def index = new Random().nextInt(2)
 		log.trace "${index} index chosen"
 		themes[index]
 }
